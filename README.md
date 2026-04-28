@@ -1,2 +1,1 @@
-# colaberry-assessment-kc
-Assessment notebooks for colaberry data engineer position
+# Code Challenge Template
