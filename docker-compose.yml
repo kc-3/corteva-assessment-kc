@@ -9,20 +9,29 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      retries: 5
 
   web:
     build: .
     command: >
       sh -c "python manage.py migrate &&
-             python ingestion/ingest.py &&
+             python ingestion/ingest.py wx_data &&
              python ingestion/analyze.py &&
              python manage.py runserver 0.0.0.0:8000"
     ports:
       - "8000:8000"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     environment:
       DATABASE_URL: postgresql://postgres:postgres@db:5432/corteva
+      SECRET_KEY: your-secret-key-here
+      DEBUG: "True"
+    volumes:
+      - ./src/wx_data:/app/wx_data
 
 volumes:
   postgres_data:
