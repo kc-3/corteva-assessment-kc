@@ -1,0 +1,57 @@
+Data Modeling , Design Decisions and Schema
+
+1. WeatherStation
+--------------------------------------------------------------------------
+Instead of storing the station ID as a repeated string on every row, stations get their own table.
+This keeps the schema clean and makes joins straightforward. 
+Each station has a unique ID that acts as its natural identifier.
+
+2. WeatherObservation
+--------------------------------------------------------------------------
+One row per station per day. The raw source files store temperatures in tenths of a degree 
+and precipitation in tenths of a millimeter, so values are converted to 
+human-readable units during ingestion — degrees Celsius for temperature and centimeters for precipitation. 
+Entries marked -9999 in the source are treated as missing and stored as NULL.
+
+
+To prevent duplicate rows if the ingestion script is run more than once, 
+the table enforces a unique constraint on the combination of station and date. 
+Indexes on the date and station+date columns keep the API filters responsive even across 1.7 million rows.
+
+3. WeatherStats
+--------------------------------------------------------------------------
+Rather than recalculating averages and totals on every API request, 
+yearly statistics are pre-computed per station and stored in a separate table.
+If all values for a given statistic in a year are missing, 
+the result is stored as NULL rather than a misleading zero. 
+The stats table is fully recomputed on each ingestion run to stay in sync with the latest data.
+
+4. Schema from models written in sql
+--------------------------------------------------------------------------
+
+```sql
+CREATE TABLE weather_station (
+    id SERIAL PRIMARY KEY,
+    station_id VARCHAR(20) UNIQUE NOT NULL
+);
+
+CREATE TABLE weather_observation (
+    id SERIAL PRIMARY KEY,
+    station_id INTEGER NOT NULL REFERENCES weather_station(id),
+    date DATE NOT NULL,
+    max_temp FLOAT,         -- degrees Celsius
+    min_temp FLOAT,         -- degrees Celsius
+    precipitation FLOAT,    -- centimeters
+    UNIQUE (station_id, date)
+);
+
+CREATE TABLE weather_stats (
+    id SERIAL PRIMARY KEY,
+    station_id INTEGER NOT NULL REFERENCES weather_station(id),
+    year INTEGER NOT NULL,
+    avg_max_temp FLOAT,         -- degrees Celsius
+    avg_min_temp FLOAT,         -- degrees Celsius
+    total_precipitation FLOAT,  -- centimeters
+    UNIQUE (station_id, year)
+);
+```

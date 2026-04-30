@@ -1,0 +1,15 @@
+The following services can be used to deploy this application on AWS
+
+1. AWS RDS PostgreSQ : This is a managed PostgreSQL instance which can be used to store the weather data with scalability.
+2. AWS S3 : We can store the raw data in the S3 buckets. We can use this bucket as the source whenever new files get dropped in this.
+3. AWS Lambda : This service does most of our processing work, it runs the ingest.py and analyze.py on a nightly schedule. Since we're using a Docker image, the container itself is going to be consistent.
+4. AWS Eventbridge : This is the scheduler service that triggers our lambda function every night, it is a rebranded version of CloudWatch Events.
+5. API Gateway : This is the service that exposes our API from the lambda function as a public endpoint.
+6. Secrets Manager : The secrets like database url and secret key are stored and accessed through the AWS secrets manager into Lambda functions at runtime.
+
+The Django API is served on Lambda using Mangum, a lightweight ASGI adapter that makes Django compatible with API Gateway with minimal code changes.
+
+The CI/CD is can be handled by GitHub Actions. It tests all the pytests when merged on main. Packages the container and pushes to ECR.
+
+The current dataset is a historical dataset of 30 years which is almost 1.7 million rows and less than 45MB . 
+Since the dataset itself is smaller using above mentioned setup is practical and less expensive which would turn out to about 20$/month with highest cost from the RDS service using a (t3.micro).

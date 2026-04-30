@@ -10,5 +10,19 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  web:
+    build: .
+    command: >
+      sh -c "python manage.py migrate &&
+             python ingestion/ingest.py &&
+             python ingestion/analyze.py &&
+             python manage.py runserver 0.0.0.0:8000"
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/corteva
+
 volumes:
   postgres_data:
